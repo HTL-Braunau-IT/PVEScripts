@@ -407,7 +407,6 @@ function start_script() {
 
 check_root
 arch_check
-pve_check
 start_script
 
 post_to_api_vm
