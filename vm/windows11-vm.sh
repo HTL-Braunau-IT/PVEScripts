@@ -20,6 +20,7 @@ EOF
 header_info
 echo -e "\n Loading..."
 GEN_MAC=02:$(openssl rand -hex 5 | awk '{print toupper($0)}' | sed 's/\(..\)/\1:/g; s/.$//')
+GEN_WAN_MAC=02:$(openssl rand -hex 5 | awk '{print toupper($0)}' | sed 's/\(..\)/\1:/g; s/.$//')
 RANDOM_UUID="$(cat /proc/sys/kernel/random/uuid)"
 METHOD=""
 NSAPP="windows11vm"
@@ -165,8 +166,11 @@ function default_settings() {
   CORE_COUNT="4"
   RAM_SIZE="8192"
   BRG="vmbr0"
+  WAN_BRG="vmbr1"
   MAC="$GEN_MAC"
+  WAN_MAC="$GEN_WAN_MAC"
   VLAN=""
+  WAN_VLAN=",tag=100"
   MTU=""
   START_VM="yes"
   METHOD="default"
@@ -455,7 +459,7 @@ msg_ok "Found Unattended ISO: ${CL}${BL}${UNATTENDED_ISO}${CL}"
 
 msg_info "Creating a Windows 11 VM"
 qm create $VMID -agent 0${MACHINE} -tablet 1 -localtime 1 -bios ovmf -cpu ${CPU_TYPE} -sockets 1 -cores $CORE_COUNT -memory $RAM_SIZE \
-  -name $HN -tags community-script -net0 virtio,bridge=$BRG,macaddr=$MAC$VLAN$MTU -onboot 1 -ostype win11 -scsihw virtio-scsi-single >/dev/null 2>&1
+  -name $HN -tags community-script -net0 virtio,bridge=$BRG,macaddr=$MAC$VLAN$MTU -net1 virtio,bridge=$WAN_BRG,macaddr=$MAC2$WAN_VLAN$MTU-onboot 1 -ostype win11 -scsihw virtio-scsi-single >/dev/null 2>&1
 
 msg_info "Allocating TPM 2.0 storage"
 pvesm alloc $STORAGE $VMID vm-${VMID}-disk-2 4M >/dev/null 2>&1
