@@ -137,40 +137,6 @@ function check_root() {
   fi
 }
 
-# This function checks the version of Proxmox Virtual Environment (PVE) and exits if the version is not supported.
-# Supported: Proxmox VE 8.0.x – 8.9.x and 9.0 (NOT 9.1+)
-pve_check() {
-  local PVE_VER
-  PVE_VER="$(pveversion | awk -F'/' '{print $2}' | awk -F'-' '{print $1}')"
-
-  # Check for Proxmox VE 8.x: allow 8.0–8.9
-  if [[ "$PVE_VER" =~ ^8\.([0-9]+) ]]; then
-    local MINOR="${BASH_REMATCH[1]}"
-    if ((MINOR < 0 || MINOR > 9)); then
-      msg_error "This version of Proxmox VE is not supported."
-      msg_error "Supported: Proxmox VE version 8.0 – 8.9"
-      exit 1
-    fi
-    return 0
-  fi
-
-  # Check for Proxmox VE 9.x: allow ONLY 9.0
-  if [[ "$PVE_VER" =~ ^9\.([0-9]+) ]]; then
-    local MINOR="${BASH_REMATCH[1]}"
-    if ((MINOR != 0)); then
-      msg_error "This version of Proxmox VE is not yet supported."
-      msg_error "Supported: Proxmox VE version 9.0"
-      exit 1
-    fi
-    return 0
-  fi
-
-  # All other unsupported versions
-  msg_error "This version of Proxmox VE is not supported."
-  msg_error "Supported versions: Proxmox VE 8.0 – 8.x or 9.0"
-  exit 1
-}
-
 function arch_check() {
   if [ "$(dpkg --print-architecture)" != "amd64" ]; then
     echo -e "\n ${INFO}${YWB}This script will not work with PiMox! \n"
@@ -192,12 +158,12 @@ function default_settings() {
   VMID=$(get_valid_nextid)
   FORMAT=",efitype=4m,pre-enrolled-keys=1"
   MACHINE=" -machine q35"
-  DISK_SIZE="60G"
+  DISK_SIZE="80G"
   DISK_CACHE=""
   HN="windows11"
   CPU_TYPE="x86-64-v2-AES"
-  CORE_COUNT="2"
-  RAM_SIZE="4096"
+  CORE_COUNT="4"
+  RAM_SIZE="8192"
   BRG="vmbr0"
   MAC="$GEN_MAC"
   VLAN=""
@@ -492,23 +458,19 @@ qm create $VMID -agent 0${MACHINE} -tablet 1 -localtime 1 -bios ovmf -cpu ${CPU_
   -name $HN -tags community-script -net0 virtio,bridge=$BRG,macaddr=$MAC$VLAN$MTU -onboot 1 -ostype win11 -scsihw virtio-scsi-single >/dev/null 2>&1
 
 msg_info "Allocating TPM 2.0 storage"
-pvesm alloc $STORAGE $VMID vm-${VMID}-disk-2 4M 
+pvesm alloc $STORAGE $VMID vm-${VMID}-disk-2 4M >/dev/null 2>&1
 msg_ok "TPM storage allocated"
 
 msg_info "Configuring TPM 2.0"
 qm set $VMID --tpmstate0 $STORAGE:vm-${VMID}-disk-2,size=4M,version=v2.0 >/dev/null 2>&1
 msg_ok "TPM 2.0 configured"
 
-#msg_info "Allocating EFI Disk storage"
-#pvesm alloc $STORAGE $VMID vm-${VMID}-disk-0 4M 
-#msg_ok "EFI storage allocated"
-
 msg_info "Configuring EFI Disk"
 qm set $VMID --efidisk0 $STORAGE:0 >/dev/null 2>&1
 msg_ok "EFI Disk configured"
 
 msg_info "Allocating Virtual Disk storage"
-pvesm alloc $STORAGE $VMID vm-${VMID}-disk-1 ${DISK_SIZE} 
+pvesm alloc $STORAGE $VMID vm-${VMID}-disk-1 ${DISK_SIZE} >/dev/null 2>&1
 msg_ok "Virtual Disk storage allocated"
 
 msg_info "Creating Virtual Disk"
